@@ -1,103 +1,129 @@
-import Image from "next/image";
+// app/page.tsx
+"use client";
+
+import { useState, useEffect, type FormEvent } from 'react';
+import io, { type Socket } from 'socket.io-client';
+import MessageList from '../components/MessageList';
+import MessageInput from '../components/MessageInput';
+
+interface Message {
+  user: string;
+  text: string;
+  timestamp?: any; // Keep timestamp flexible for now
+}
+
+
+let socket: Socket | undefined;
+
+const INITIAL_MESSAGES: Message[] = [];
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [newMessage, setNewMessage] = useState('');
+  const [username, setUsername] = useState('Guest');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    let storedName = localStorage.getItem('username');
+    if (storedName) { setUsername(storedName); }
+    else {
+      storedName = window.prompt("What's your name?");
+      if (storedName) {
+        localStorage.setItem('username', storedName);
+        setUsername(storedName);
+      }
+    }
+
+    const initSocket = async () => {
+       if (!socket) {
+           await fetch('/api/socket');
+           socket = io({ path: '/api/socket' });
+
+           socket.on('connect', () => {
+               console.log("--- CLIENT: Socket connected.");
+           });
+
+           socket.on('load_history', (history: Message[]) => {
+               console.log(`--- CLIENT: Received ${history.length} messages from history.`);
+               setMessages(history);
+           });
+
+           socket.on('new_message', (msg: Message) => {
+               console.log("--- CLIENT: Received 'new_message'.");
+               setMessages((prevMessages) => [...prevMessages, msg]);
+           });
+
+           socket.on('connect_error', (err) => {
+               console.error("--- CLIENT: Socket connection error:", err);
+           });
+
+           socket.on('disconnect', () => {
+               console.log("--- CLIENT: Socket disconnected.");
+           });
+       }
+    }
+
+    initSocket();
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+        socket = undefined;
+      }
+    };
+  }, []);
+
+  const handleSendMessage = (e: FormEvent) => {
+    e.preventDefault();
+    if (newMessage.trim() === '' || !socket || !socket.connected) {
+        console.error("--- CLIENT: Socket not connected. Cannot send message.");
+        return;
+    }
+    const messageToSend: Message = { user: username, text: newMessage.trim() };
+    socket.emit('send_message', messageToSend);
+    setNewMessage('');
+  };
+
+  return (
+    // ... Your JSX (header, main, footer) is unchanged ...
+    <main className="flex flex-col h-screen bg-white">
+      {/* Header */}
+      <header className="flex items-center justify-between p-3 border-b shadow-sm">
+        <div className="flex items-center space-x-3">
+          <button className="p-2 rounded-full hover:bg-gray-100">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-xl font-medium text-gray-800">Software Engineering Project</h1>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+        <div className="flex items-center space-x-2">
+          <button className="p-2 rounded-full hover:bg-gray-100">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.975 5.975 0 0112 13a5.975 5.975 0 013 5.197" />
+            </svg>
+          </button>
+          <button className="p-2 rounded-full hover:bg-gray-100">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      {/* Message Area */}
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-100">
+        <MessageList messages={messages} />
+      </div>
+
+      {/* Footer */}
+      <footer className="p-4 bg-white border-t">
+        <MessageInput
+          newMessage={newMessage}
+          setNewMessage={setNewMessage}
+          onSendMessage={handleSendMessage}
+        />
       </footer>
-    </div>
+    </main>
   );
 }
