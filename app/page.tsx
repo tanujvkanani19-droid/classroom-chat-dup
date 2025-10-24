@@ -6,10 +6,14 @@ import io, { type Socket } from 'socket.io-client';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 
+// --- MODIFIED: Timestamp type changed from 'any' ---
 interface Message {
   user: string;
   text: string;
-  timestamp?: any; // Keep timestamp flexible for now
+  timestamp?: { // Firestore timestamp object
+      seconds: number;
+      nanoseconds: number;
+  } | Date | undefined; // Or a Date object, or undefined
 }
 
 
@@ -38,39 +42,27 @@ export default function Home() {
            await fetch('/api/socket');
            socket = io({ path: '/api/socket' });
 
-           socket.on('connect', () => {
-               console.log("--- CLIENT: Socket connected.");
-           });
-
+           socket.on('connect', () => { console.log("--- CLIENT: Socket connected."); });
+           
            socket.on('load_history', (history: Message[]) => {
                console.log(`--- CLIENT: Received ${history.length} messages from history.`);
-               setMessages(history);
+               setMessages(history); 
            });
 
            socket.on('new_message', (msg: Message) => {
-               console.log("--- CLIENT: Received 'new_message'.");
                setMessages((prevMessages) => [...prevMessages, msg]);
            });
 
-           socket.on('connect_error', (err) => {
-               console.error("--- CLIENT: Socket connection error:", err);
-           });
-
-           socket.on('disconnect', () => {
-               console.log("--- CLIENT: Socket disconnected.");
-           });
+           socket.on('connect_error', (err) => { console.error("--- CLIENT: Socket connection error:", err); });
+           socket.on('disconnect', () => { console.log("--- CLIENT: Socket disconnected."); });
        }
     }
-
     initSocket();
 
-    return () => {
-      if (socket) {
-        socket.disconnect();
-        socket = undefined;
-      }
+    return () => { // Cleanup
+      if (socket) { socket.disconnect(); socket = undefined; }
     };
-  }, []);
+  }, []); 
 
   const handleSendMessage = (e: FormEvent) => {
     e.preventDefault();
@@ -78,13 +70,13 @@ export default function Home() {
         console.error("--- CLIENT: Socket not connected. Cannot send message.");
         return;
     }
-    const messageToSend: Message = { user: username, text: newMessage.trim() };
+    const messageToSend: Message = { user: username, text: newMessage.trim() }; // No timestamp added here
     socket.emit('send_message', messageToSend);
     setNewMessage('');
   };
 
   return (
-    // ... Your JSX (header, main, footer) is unchanged ...
+    // ... Your JSX is unchanged ...
     <main className="flex flex-col h-screen bg-white">
       {/* Header */}
       <header className="flex items-center justify-between p-3 border-b shadow-sm">
