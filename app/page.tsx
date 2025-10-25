@@ -1,7 +1,7 @@
 // app/page.tsx
 "use client";
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import io, { type Socket } from 'socket.io-client';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
@@ -26,6 +26,8 @@ export default function Home() {
   const [newMessage, setNewMessage] = useState('');
   const [username, setUsername] = useState('Guest');
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
   useEffect(() => {
     let storedName = localStorage.getItem('username');
     if (storedName) { setUsername(storedName); }
@@ -64,6 +66,10 @@ export default function Home() {
     };
   }, []); 
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+  
   const handleSendMessage = (e: FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === '' || !socket || !socket.connected) {
@@ -105,7 +111,7 @@ export default function Home() {
 
       {/* Message Area */}
       <div className="flex-1 overflow-y-auto p-4 bg-gray-100">
-        <MessageList messages={messages} />
+        <MessageList messages={messages} messagesEndRef={messagesEndRef} />
       </div>
 
       {/* Footer */}
