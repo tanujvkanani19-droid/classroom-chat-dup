@@ -6,14 +6,13 @@ import io, { type Socket } from 'socket.io-client';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 
-// --- MODIFIED: Timestamp type changed from 'any' ---
 interface Message {
   user: string;
   text: string;
-  timestamp?: { // Firestore timestamp object
+  timestamp?: { 
       seconds: number;
       nanoseconds: number;
-  } | Date | undefined; // Or a Date object, or undefined
+  } | Date | undefined; 
 }
 
 
@@ -61,7 +60,7 @@ export default function Home() {
     }
     initSocket();
 
-    return () => { // Cleanup
+    return () => { 
       if (socket) { socket.disconnect(); socket = undefined; }
     };
   }, []); 
@@ -76,13 +75,13 @@ export default function Home() {
         console.error("--- CLIENT: Socket not connected. Cannot send message.");
         return;
     }
-    const messageToSend: Message = { user: username, text: newMessage.trim() }; // No timestamp added here
+    const messageToSend: Message = { user: username, text: newMessage.trim() }; 
     socket.emit('send_message', messageToSend);
     setNewMessage('');
   };
 
   return (
-    // ... Your JSX is unchanged ...
+
     <main className="flex flex-col h-screen bg-white">
       {/* Header */}
       <header className="flex items-center justify-between p-3 border-b shadow-sm">
